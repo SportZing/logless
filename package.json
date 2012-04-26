@@ -1,0 +1,18 @@
+{
+  "author": "James Brumond <kbjr14@gmail.com> (http://jbrumond.me)",
+  "name": "logless",
+  "description": "Uglifies using Uglify-js while removing logging code at the same time",
+  "version": "0.0.0",
+  "repository": {
+    "url": ""
+  },
+  "main": "logless.js",
+  "engines": {
+    "node": "~0.6.0"
+  },
+  "dependencies": {
+    "async": "latest",
+    "uglify-js": "latest"
+  },
+  "devDependencies": {}
+}
