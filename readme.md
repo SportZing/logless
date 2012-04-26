@@ -2,13 +2,13 @@
 
 Parses JavaScript code for specific objects/namespaces/calls and removes them. Designed to automatically remove logging from production code. Built on top of [UglifyJS](https://github.com/mishoo/UglifyJS).
 
-### Install
+## Install
 
 ```bash
 $ npm install logless
 ```
 
-### Progmatic Usage
+## Progmatic Usage
 
 ```javascript
 var logless = require('logless');
@@ -16,7 +16,7 @@ var logless = require('logless');
 // ...
 ```
 
-#### Parsing Code
+### Parsing Code
 
 ```javascript
 logless.parse(jsCodeString, ['console.log', 'alert'], function(err, result) {
@@ -27,7 +27,7 @@ logless.parse(jsCodeString, ['console.log', 'alert'], function(err, result) {
 });
 ```
 
-#### Parsing A File's Contents
+### Parsing A File's Contents
 
 ```javascript
 logless.parse.file('/path/to/file.js', ['console.log', 'alert'], function(err, result) {
@@ -38,6 +38,8 @@ logless.parse.file('/path/to/file.js', ['console.log', 'alert'], function(err, r
 });
 ```
 
+## CLI Usage
 
+_Under Construction_
 
 
