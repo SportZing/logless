@@ -52,12 +52,32 @@ function genCode(ast) {
 function removeNames(ast, names, callback) {
 	names = new NameTester(names);
 	
+	var index, scope;
+	
 	// The recursive traverser
 	(function traverse(level, callback) {
+		console.log('\n', level);
 		switch (level[0]) {
 			
 			case 'toplevel':
-				async.forEach(level[1], traverse, callback);
+			case '_function':
+				index = 0;
+				scope = level[1];
+				async.forEachSeries(level[1],
+					function(current, next) {
+						traverse(current, function() {
+							index++;
+							next();
+						});
+					},
+					function() {
+						if (level[0] === '_function') {
+							names.blacklists.pop();
+						}
+						level[1] = collapseNulls(level[1]);
+						callback.apply(this, arguments);
+					}
+				);
 			break;
 			
 			case 'stat':
@@ -69,7 +89,12 @@ function removeNames(ast, names, callback) {
 			break;
 			
 			case 'call':
-				traverse(parseCall(level), callback);
+				if (level[1][0] === 'function') {
+					traverse(parseCall(level), callback);
+				} else {
+					parseCall(level);
+					callback();
+				}
 			break;
 			
 			default:
@@ -85,21 +110,31 @@ function removeNames(ast, names, callback) {
 		var callWhat = node[1];
 		switch (callWhat[0]) {
 			
+			case 'dot':
+			case 'name':
+				if (names.test(callWhat)) {
+					scope[index] = null;
+				}
+			break;
+			
 			case 'function':
 				var argNames   = callWhat[2];
 				var funcBody   = callWhat[3];
 				var argValues  = node[2];
 				
+				var blacklist = [ ]
 				argValues.forEach(function(arg, i) {
 					if (names.test(arg)) {
+						blacklist.push(argNames[i]);
 						argNames[i] = argValues[i] = null;
 					}
 				});
 				
 				callWhat[2] = collapseNulls(argNames);
 				node[2] = collapseNulls(argValues);
+				names.blacklists.push(blacklist);
 				
-				return funcBody;
+				return ['_function', funcBody];
 			break;
 			
 		}
@@ -112,10 +147,30 @@ function removeNames(ast, names, callback) {
 
 function NameTester(names) {
 	this.names = names;
+	this.blacklists = [ ];
 }
 
 NameTester.prototype.test = function(node) {
-	return (this.names.indexOf(buildName(node)) >= 0);
+	var names = this.names.concat(
+		flattenArrays(this.blacklists)
+	);
+	var testName = buildName(node);
+	if (names.indexOf(testName)) {return true;}
+	for (var i = 0, c = names.length; i < c; i++) {
+		if (testName.indexOf(names[i]) === 0 &&
+			(testName.length <= names[i].length || testName[names[i].length] === '.')
+		) {return true;}
+	}
+	return false;
+};
+
+NameTester.prototype.addToCurrentBlacklist = function(name) {
+	name = Array.isArray(name) ? name : [name];
+	if (! this.blacklists.length) {
+		this.blacklists.push([ ]);
+	}
+	var current = this.blacklists[this.blacklists.length - 1];
+	current.push.apply(current, name);
 };
 
 // Convert an AST name/dot structure into an expression
@@ -149,7 +204,9 @@ function collapseNulls(arr) {
 	return result;
 }
 
-
+function flattenArrays(arr) {
+	arr.join(',').split(',');
+}
 
 
 
