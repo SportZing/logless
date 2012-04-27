@@ -21,23 +21,13 @@ var logless = require('logless');
 ### Parsing Code
 
 ```javascript
-logless.parse(jsCodeString, ['console.log', 'alert'], function(err, result) {
-	if (err) {throw err;}
-	
-	// ...
-	
-});
+var parsedCode = logless.parse(jsCodeString, ['console.log', 'alert']);
 ```
 
 ### Parsing A File's Contents
 
 ```javascript
-logless.parse.file('/path/to/file.js', ['console.log', 'alert'], function(err, result) {
-	if (err) {throw err;}
-	
-	// ...
-	
-});
+var parsedCode = logless.parse.file('/path/to/file.js', ['console.log', 'alert']);
 ```
 
 ## CLI Usage
