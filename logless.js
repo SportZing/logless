@@ -1,10 +1,7 @@
 
 var fs        = require('fs');
 var jsp       = require('uglify-js').parser;
-var pro       = require('uglify-js').uglify;
 var burrito   = require('burrito');
-
-exports.readableOutput = true;
 
 /**
  * Parse a block of code, removing all given references
@@ -12,8 +9,7 @@ exports.readableOutput = true;
  */
 exports.parse = function(code, names) {
 	var ast = getAst(code);
-	removeNames(ast, names);
-	return genCode(ast);
+	return removeNames(ast, names);
 };
 
 exports.parse.file = function(file, names) {
@@ -29,25 +25,39 @@ function getAst(code) {
 	return jsp.parse(code, false, true);
 }
 
-function genCode(ast) {
-	if (! exports.readableOutput) {
-		ast = pro.ast_mangle(ast);
-		ast = pro.ast_squeeze(ast);
-	}
-	return pro.gen_code(ast, {
-		beautify: exports.readableOutput
-	});
-}
-
 function removeNames(ast, names) {
+	var statement;
 	names = new NameTester(names);
-	burrito(ast, function(node) {
+	return burrito(ast, function(node) {
 		switch (node.name) {
+			
+			case 'var':
+				node.node[1].forEach(function(sub, i) {
+					if (names.test(sub[1][1])) {
+						names.addToCurrentBlacklist(sub[0]);
+						node.node[1][i] = null;
+					}
+				});
+				collapseNulls(node.node[1]);
+				if (! node.node[1].length) {
+					node.state.delete();
+				}
+			break;
+			
+			case 'assign':
+				// TODO
+			break;
+			
+			case 'stat':
+				statement = node;
+			break;
 			
 			case 'call':
 				var sub = node.node[1];
 				switch (sub[0]) {
 					
+					// TODO Also needs to handle removing blacklisted
+					// names at the end of a function scope
 					case 'function':
 						var argNames = sub[2];
 						var argValues = node.node[2];
@@ -63,142 +73,52 @@ function removeNames(ast, names) {
 						collapseNulls(argNames);
 						collapseNulls(argValues);
 						
-						names.blacklists.push(blacklist);
+						names.addBlacklist(blacklist);
+					break;
+					
+					case 'dot':
+					case 'name':
+						if (names.test(node.value[0])) {
+							statement.state.delete();
+						}
 					break;
 					
 					default:
-						logNext();
+						// XXX Should not happen
 					break;
 					
 				}
 			break;
 			
-			case 'stat':
 			case 'unary-prefix':
 				return;
 			break;
 			
 			default:
-				logNext();
+				// XXX Safely ignored
 			break;
 		
 		}
+		
 	});
 }
-
-// XXX
-	var logNext = function(node) {
-		console.log('\n' +
-			require('util').inspect(node, false, 4)
+	
+	function Log(foo, depth) {
+		console.log(
+			'\n' + require('util').inspect(foo, true, depth || 3) + '\n'
 		);
-		logNext = function() { };
-	};
-
-// Actually traverse/parse the AST
-//function removeNames(ast, names, callback) {
-//	var index, scope;
-//	names = new NameTester(names);
-//	
-//	// The recursive traverser
-//	(function traverse(level, callback) {
-//		console.log('\n', level);
-//		switch (level[0]) {
-//			
-//			case 'toplevel':
-//			case '_function':
-//				index = 0;
-//				scope = level[1];
-//				async.forEachSeries(level[1],
-//					function(current, next) {
-//						traverse(current, function() {
-//							index++;
-//							next();
-//						});
-//					},
-//					function() {
-//						if (level[0] === '_function') {
-//							names.blacklists.pop();
-//						}
-//						level[1] = collapseNulls(level[1]);
-//						callback.apply(this, arguments);
-//					}
-//				);
-//			break;
-//			
-//			case 'stat':
-//				traverse(level[1], callback);
-//			break;
-//			
-//			case 'unary-prefix':
-//				traverse(level[2], callback);
-//			break;
-//			
-//			case 'call':
-//				if (level[1][0] === 'function') {
-//					traverse(parseCall(level), callback);
-//				} else {
-//					parseCall(level);
-//					callback();
-//				}
-//			break;
-//			
-//			default:
-//				console.log(level);
-//				callback();
-//			break;
-//			
-//		}
-//	}(ast, callback));
-//	
-//	// Parse "call" nodes
-//	function parseCall(node) {
-//		var callWhat = node[1];
-//		switch (callWhat[0]) {
-//			
-//			case 'dot':
-//			case 'name':
-//				if (names.test(callWhat)) {
-//					scope[index] = null;
-//				}
-//			break;
-//			
-//			case 'function':
-//				var argNames   = callWhat[2];
-//				var funcBody   = callWhat[3];
-//				var argValues  = node[2];
-//				
-//				var blacklist = [ ]
-//				argValues.forEach(function(arg, i) {
-//					if (names.test(arg)) {
-//						blacklist.push(argNames[i]);
-//						argNames[i] = argValues[i] = null;
-//					}
-//				});
-//				
-//				callWhat[2] = collapseNulls(argNames);
-//				node[2] = collapseNulls(argValues);
-//				names.blacklists.push(blacklist);
-//				
-//				return ['_function', funcBody];
-//			break;
-//			
-//		}
-//	}
-//	
-//}
+	}
 
 // ------------------------------------------------------------------
 //  Tests AST node structures against a blacklist of names
 
 function NameTester(names) {
-	this.names = names;
 	this.blacklists = [ ];
+	this.names = names.slice();
 }
 
 NameTester.prototype.test = function(node) {
-	var names = this.names.concat(
-		flattenArrays(this.blacklists)
-	);
+	var names = flattenArrays([ this.names, this.blacklists ]);
 	var testName = buildName(node);
 	if (names.indexOf(testName) >= 0) {return true;}
 	for (var i = 0, c = names.length; i < c; i++) {
@@ -209,10 +129,14 @@ NameTester.prototype.test = function(node) {
 	return false;
 };
 
+NameTester.prototype.addBlacklist = function(blacklist) {
+	this.blacklists.push(blacklist || [ ]);
+};
+
 NameTester.prototype.addToCurrentBlacklist = function(name) {
 	name = Array.isArray(name) ? name : [name];
 	if (! this.blacklists.length) {
-		this.blacklists.push([ ]);
+		this.addBlacklist();
 	}
 	var current = this.blacklists[this.blacklists.length - 1];
 	current.push.apply(current, name);
@@ -248,24 +172,7 @@ function collapseNulls(arr) {
 }
 
 function flattenArrays(arr) {
-	arr.join(',').split(',');
+	return arr.join(',').split(',');
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* End of file logless.js */
