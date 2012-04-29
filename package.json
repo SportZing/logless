@@ -11,7 +11,6 @@
     "node": "~0.6.0"
   },
   "dependencies": {
-    "burrito": "latest",
     "uglify-js": "latest"
   },
   "devDependencies": {}

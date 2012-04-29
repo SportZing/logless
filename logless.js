@@ -1,47 +1,54 @@
 
-var fs        = require('fs');
-var jsp       = require('uglify-js').parser;
-var burrito   = require('burrito');
+var fs   = require('fs');
+var jsp  = require('uglify-js').parser;
+var pro  = require('uglify-js').uglify;
 
-/**
- * Parse a block of code, removing all given references
- * to a given set of names
- */
+// ------------------------------------------------------------------
+//  Public parsers
+ 
 exports.parse = function(code, names) {
-	var ast = getAst(code);
-	return removeNames(ast, names);
+	return genCode(doParse(code, names));
 };
 
-exports.parse.file = function(file, names) {
+exports.parse.file = function(file, names, callback) {
+	fs.readFile(file, function(err, data) {
+		if (err) {
+			return callback(err);
+		}
+		try {
+			var result = removeNames(String(data), names);
+			callback(null, result);
+		} catch (e) {callback(e);}
+	});
+};
+
+exports.parse.fileSync = function(file, names) {
 	return exports.parse(
 		String(fs.readFileSync(file)), names
 	);
 };
 
-// ------------------------------------------------------------------
-//  Internals
-
-function getAst(code) {
-	return jsp.parse(code, false, true);
-}
-
-function removeNames(ast, names) {
-	var statement;
-	names = new NameTester(names);
-	return burrito(ast, function(node) {
+function doParse(code, names) {
+	names = new Blacklist(names);
+	var walker = new Walker(getAst(code), function(node) {
+		Log(node, 2);
 		switch (node.name) {
 			
+			case 'toplevel':
+				// pass
+			break;
+			
 			case 'var':
-				node.node[1].forEach(function(sub, i) {
-					if (names.test(sub[1][1])) {
-						names.addToCurrentBlacklist(sub[0]);
-						node.node[1][i] = null;
-					}
-				});
-				collapseNulls(node.node[1]);
-				if (! node.node[1].length) {
-					node.state.delete();
-				}
+//				node.node[1].forEach(function(sub, i) {
+//					if (names.test(sub[1][1])) {
+//						names.addToCurrentBlacklist(sub[0]);
+//						node.node[1][i] = null;
+//					}
+//				});
+//				collapseNulls(node.node[1]);
+//				if (! node.node[1].length) {
+//					node.state.delete();
+//				}
 			break;
 			
 			case 'assign':
@@ -49,75 +56,132 @@ function removeNames(ast, names) {
 			break;
 			
 			case 'stat':
-				statement = node;
+//				statement = node;
 			break;
 			
 			case 'call':
 				var sub = node.node[1];
 				switch (sub[0]) {
 					
-					// TODO Also needs to handle removing blacklisted
-					// names at the end of a function scope
 					case 'function':
 						var argNames = sub[2];
 						var argValues = node.node[2];
 						
 						var blacklist = [ ];
-						argValues.forEach(function(arg, i) {
-							if (names.test(arg)) {
+						for (var i = 0; i < argValues.length; i++) {
+							if (names.test(argValues[i])) {
 								blacklist.push(argNames[i]);
-								argNames[i] = argValues[i] = null;
+								argNames.splice(i, 1);
+								argValues.splice(i--, 1);
 							}
-						});
-						
-						collapseNulls(argNames);
-						collapseNulls(argValues);
+						}
 						
 						names.addBlacklist(blacklist);
+						node.after(function() {
+							names.removeCurrentBlacklist();
+						});
 					break;
 					
-					case 'dot':
-					case 'name':
-						if (names.test(node.value[0])) {
-							statement.state.delete();
-						}
-					break;
-					
-					default:
-						// XXX Should not happen
-					break;
+//					case 'dot':
+//					case 'name':
+//						if (names.test(node.value[0])) {
+//							statement.state.delete();
+//						}
+//					break;
 					
 				}
 			break;
 			
 			case 'unary-prefix':
-				return;
-			break;
-			
 			default:
-				// XXX Safely ignored
+				// pass
 			break;
 		
 		}
-		
 	});
+	walker.walk();
+	return walker.toplevel;
 }
-	
-	function Log(foo, depth) {
-		console.log(
-			'\n' + require('util').inspect(foo, true, depth || 3) + '\n'
-		);
+
+// ------------------------------------------------------------------
+//  AST Walker
+
+function Walker(ast, onstep) {
+	this.toplevel  = ast;
+	this.path      = [ ];
+	this.parent    = null;
+	this.current   = this.toplevel;
+	this.onstep    = onstep;
+}
+
+Walker.prototype.handleNode = function(node) {
+	if (Node.isNode(node)) {
+		var node = new Node(node, this.parent, this);
+		this.onstep.call(this, node);
+		return node;
 	}
+};
+
+Walker.prototype.walk = function() {
+	var node = this.handleNode(this.current);
+	if (Array.isArray(this.current)) {
+		var parent = this.parent = this.current;
+		for (var key = 0; key < this.parent.length; key++) {
+			this.path.push(key);
+			
+			this.current = parent[key];
+			this.walk();
+			
+			key = this.path.pop();
+		}
+	}
+	if (node && node._after) {
+		node._after.call(this, node);
+	}
+};
+
+// ------------------------------------------------------------------
+//  AST Node Constructor
+
+function Node(node, parent, walker) {
+	this.node    = node;
+	this.parent  = parent;
+	this.name    = (typeof node[0] === 'object') ? node[0].name : node[0];
+	this.value   = node.slice(1);
+	this.walker  = walker
+	this._after  = null;
+}
+
+Node.prototype.after = function(func) {
+	this._after = func;
+};
+
+Node.prototype.remove = function() {
+	var last = this.walker.path.length - 1;
+	this.parent.node.splice(this.walker.path[last]--, 1);
+};
+
+Node.isNode = function(node) {
+	return (
+		(node && node[0] === 'toplevel') || (
+			Array.isArray(node) && node[0] && (typeof node[0] === 'object') && node[0].name
+		)
+	);
+};
+
+Node.buildName = function() {
+	return buildName(this.node);
+};
 
 // ------------------------------------------------------------------
 //  Tests AST node structures against a blacklist of names
 
-function NameTester(names) {
+function Blacklist(names) {
 	this.blacklists = [ ];
 	this.names = names.slice();
 }
 
-NameTester.prototype.test = function(node) {
+Blacklist.prototype.test = function(node) {
 	var names = flattenArrays([ this.names, this.blacklists ]);
 	var testName = buildName(node);
 	if (names.indexOf(testName) >= 0) {return true;}
@@ -129,20 +193,34 @@ NameTester.prototype.test = function(node) {
 	return false;
 };
 
-NameTester.prototype.addBlacklist = function(blacklist) {
+Blacklist.prototype.addBlacklist = function(blacklist) {
 	this.blacklists.push(blacklist || [ ]);
 };
 
-NameTester.prototype.addToCurrentBlacklist = function(name) {
+Blacklist.prototype.addToCurrentBlacklist = function(name) {
 	name = Array.isArray(name) ? name : [name];
 	if (! this.blacklists.length) {
 		this.addBlacklist();
 	}
-	var current = this.blacklists[this.blacklists.length - 1];
+	var current = this.blacklists.slice(-1)[0];
 	current.push.apply(current, name);
 };
 
-// Convert an AST name/dot structure into an expression
+Blacklist.prototype.removeCurrentBlacklist = function() {
+	this.blacklists.pop();
+};
+
+// ------------------------------------------------------------------
+//  Utilities
+
+function getAst(code) {
+	return jsp.parse(code, false, true);
+}
+
+function genCode(ast) {
+	return pro.gen_code(ast, {beautify: true});
+}
+
 function buildName(node, segments) {
 	segments = segments || [ ];
 	switch ((typeof node[0] === 'string') ? node[0] : node[0].name) {
@@ -156,23 +234,22 @@ function buildName(node, segments) {
 		case 'call':
 			buildName(node[1], segments);
 		break;
+		case 'defun':
+		case 'function':
+			segments.push(node[1][0]);
+		break;
 	}
 	return segments.join('.');
 }
 
-// ------------------------------------------------------------------
-//  Utilities
-
-function collapseNulls(arr) {
-	for (var i = 0; i < arr.length; i++) {
-		if (arr[i] === null) {
-			arr.splice(i--, 1);
-		}
-	}
-}
-
 function flattenArrays(arr) {
 	return arr.join(',').split(',');
+}
+	
+function Log(foo, depth) {
+	console.log(
+		'\n' + require('util').inspect(foo, false, depth || 3) + '\n'
+	);
 }
 
 /* End of file logless.js */
