@@ -4,22 +4,105 @@
  * CLI For logless
  */
 
+var logless = require('../logless');
+
+var opts = {
+	input: null,
+	output: null,
+	terms: null
+};
+
 var args = process.argv.slice(2);
 
+if (! args.length) {
+	console.log('No parameters given. Use `logless --help` for usage.');
+	process.exit(0);
+}
 
+while (args.length) {
+	switch (args.shift()) {
+		
+		case '--help':
+			console.log([
+				'',
+				'  usage: logless [--input <in-file>] [--output <out-file>] [--terms <terms>...]',
+				'',
+				'  Options:',
+				'',
+				'    --help',
+				'      Show this message',
+				'',
+				'    --input',
+				'      Select an input file (defaults to stdin)',
+				'',
+				'    --output',
+				'      Select an output file (defaults to stdout)',
+				'',
+				'    --terms',
+				'      Followed by a list of blacklist terms (eg. --terms "console.log" "alert").',
+				'      Because this takes all remaining args, this option should be last.',
+				''
+			].join('\n'));
+			process.exit(0);
+		break;
+		
+		case '--input':
+			opts.input = args.shift();
+		break;
+		
+		case '--output':
+			opts.output = args.shift();
+		break;
+		
+		case '--terms':
+			opts.terms = args.splice(0);
+		break;
+		
+	}
+}
 
+if (! opts.terms) {
+	console.error('No blacklist terms given.');
+	process.exit(1);
+}
 
+readInput(function(code) {
+	writeOutput(
+		logless.parse(code, opts.terms)
+	);
+});
 
+// ------------------------------------------------------------------
+//  I/O Shortcuts
 
+function readInput(callback) {
+	if (opts.input === null) {
+		var stdin = '';
+		process.stdin.resume();
+		process.stdin.setEncoding('utf8');
+		process.on('data', function(chunk) {
+			stdin += chunk;
+		});
+		process.on('end', function() {
+			callback(stdin);
+		});
+	} else {
+		require('fs').readFile(opts.input, function(err, data) {
+			if (err) {throw err;}
+			callback(String(data));
+		});
+	}
+}
 
-
-
-
-
-
-
-
-
+function writeOutput(output) {
+	if (opts.output === null) {
+		process.stdout.write(output + '\n');
+	} else {
+		require('fs').writeFile(opts.output, output, function(err) {
+			if (err) {throw err;}
+		});
+	}
+}
 
 /* End of file logless.js */
 /* Location: ./bin/logless.js */
