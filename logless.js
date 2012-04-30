@@ -30,6 +30,8 @@ exports.parse.fileSync = function(file, names) {
 
 function doParse(code, names) {
 	names = new Blacklist(names);
+	
+	var statement;
 	var walker = new Walker(getAst(code), function(node) {
 		Log(node, 2);
 		switch (node.name) {
@@ -56,7 +58,7 @@ function doParse(code, names) {
 			break;
 			
 			case 'stat':
-//				statement = node;
+				statement = node;
 			break;
 			
 			case 'call':
@@ -82,12 +84,12 @@ function doParse(code, names) {
 						});
 					break;
 					
-//					case 'dot':
-//					case 'name':
-//						if (names.test(node.value[0])) {
-//							statement.state.delete();
-//						}
-//					break;
+					case 'dot':
+					case 'name':
+						if (names.test(node.value[0])) {
+							statement.remove();
+						}
+					break;
 					
 				}
 			break;
@@ -100,40 +102,50 @@ function doParse(code, names) {
 		}
 	});
 	walker.walk();
-	return walker.toplevel;
+	return walker.ast;
 }
 
 // ------------------------------------------------------------------
-//  AST Walker
+//  AST Walker Constructor
 
 function Walker(ast, onstep) {
-	this.toplevel  = ast;
+	this.ast       = ast;
 	this.path      = [ ];
-	this.parent    = null;
-	this.current   = this.toplevel;
 	this.onstep    = onstep;
+	this.current   = ast;
+	this.parents   = [ ];
 }
 
 Walker.prototype.handleNode = function(node) {
 	if (Node.isNode(node)) {
-		var node = new Node(node, this.parent, this);
+		node = new Node(node, this.parents.slice(-1)[0], this);
 		this.onstep.call(this, node);
-		return node;
 	}
 };
 
 Walker.prototype.walk = function() {
 	var node = this.handleNode(this.current);
 	if (Array.isArray(this.current)) {
-		var parent = this.parent = this.current;
-		for (var key = 0; key < this.parent.length; key++) {
-			this.path.push(key);
+		var depth = this.path.length;
+		var parent = this.current;
+		this.parents.push(parent);
+		var previous = [ ];
+		for (var key = 0; key < parent.length; key++) {
 			
+			this.path.push(key);
 			this.current = parent[key];
+			
+			if (previous.indexOf(this.current) >= 0) {continue;}
+			previous.push(this.current);
+			
 			this.walk();
 			
+			if (this.path.length <= depth) {break;}
 			key = this.path.pop();
+			
 		}
+		this.parents.pop();
+		this.current = parent;
 	}
 	if (node && node._after) {
 		node._after.call(this, node);
@@ -144,12 +156,13 @@ Walker.prototype.walk = function() {
 //  AST Node Constructor
 
 function Node(node, parent, walker) {
-	this.node    = node;
-	this.parent  = parent;
-	this.name    = (typeof node[0] === 'object') ? node[0].name : node[0];
-	this.value   = node.slice(1);
-	this.walker  = walker
-	this._after  = null;
+	this.node      = node;
+	this.parent    = parent;
+	this.name      = (typeof node[0] === 'object') ? node[0].name : node[0];
+	this.value     = node.slice(1);
+	this.walker    = walker;
+	this.depth     = walker.path.length;
+	this._after    = null;
 }
 
 Node.prototype.after = function(func) {
@@ -157,8 +170,8 @@ Node.prototype.after = function(func) {
 };
 
 Node.prototype.remove = function() {
-	var last = this.walker.path.length - 1;
-	this.parent.node.splice(this.walker.path[last]--, 1);
+	this.walker.path.splice(this.depth);
+	this.parent.splice(this.walker.path[this.depth - 1]--, 1);
 };
 
 Node.isNode = function(node) {
