@@ -33,7 +33,6 @@ function doParse(code, names) {
 	
 	var statement;
 	var walker = new Walker(getAst(code), function(node) {
-		Log(node, 2);
 		switch (node.name) {
 			
 			case 'toplevel':
@@ -41,16 +40,16 @@ function doParse(code, names) {
 			break;
 			
 			case 'var':
-//				node.node[1].forEach(function(sub, i) {
-//					if (names.test(sub[1][1])) {
-//						names.addToCurrentBlacklist(sub[0]);
-//						node.node[1][i] = null;
-//					}
-//				});
-//				collapseNulls(node.node[1]);
-//				if (! node.node[1].length) {
-//					node.state.delete();
-//				}
+				for (var i = 0; i < node.node[1].length; i++) {
+					var sub = node.node[1][i];
+					if (names.test(sub[1][1])) {
+						names.addToCurrentBlacklist(sub[0]);
+						node.node[1].splice(i--, 1);
+					}
+				}
+				if (! node.node[1].length) {
+					node.remove();
+				}
 			break;
 			
 			case 'assign':
