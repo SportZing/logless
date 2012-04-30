@@ -2,7 +2,7 @@
 
 Parses JavaScript code for specific objects/namespaces/calls and removes them. Designed to automatically remove logging from production code. Built on top of [UglifyJS](https://github.com/mishoo/UglifyJS).
 
-_Still In Development_
+_Still In Beta_
 
 ## Install
 
@@ -32,7 +32,9 @@ var parsedCode = logless.parse.file('/path/to/file.js', ['console.log', 'alert']
 
 ## CLI Usage
 
-_Under Construction_
+```bash
+$ logless [--input <in-file>] [--output <out-file>] [--terms <terms>...]
+```
 
 ## MIT License
 
