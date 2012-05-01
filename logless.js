@@ -28,6 +28,9 @@ exports.parse.fileSync = function(file, names) {
 	);
 };
 
+// ------------------------------------------------------------------
+//  Main parser
+
 function doParse(code, names) {
 	names = new Blacklist(names);
 	
@@ -42,9 +45,11 @@ function doParse(code, names) {
 			case 'var':
 				for (var i = 0; i < node.node[1].length; i++) {
 					var sub = node.node[1][i];
-					if (names.test(sub[1][1])) {
-						names.addToCurrentBlacklist(sub[0]);
-						node.node[1].splice(i--, 1);
+					if (sub[1][0].name !== 'function') {
+						if (names.test(sub[1][1])) {
+							names.addToCurrentBlacklist(sub[0]);
+							node.node[1].splice(i--, 1);
+						}
 					}
 				}
 				if (! node.node[1].length) {
@@ -235,7 +240,7 @@ function genCode(ast) {
 
 function buildName(node, segments) {
 	segments = segments || [ ];
-	switch ((typeof node[0] === 'string') ? node[0] : node[0].name) {
+	switch ((typeof node[0] === 'object' && node[0]) ? node[0].name : node[0]) {
 		case 'dot':
 			buildName(node[1], segments);
 			segments.push(node[2]);
