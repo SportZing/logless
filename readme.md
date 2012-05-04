@@ -29,10 +29,12 @@ var parsedCode = logless.parse(jsCodeString, ['console.log', 'alert']);
 ### Parsing A File's Contents
 
 ```javascript
+// Async file read
 logless.parse.file('/path/to/file.js', ['console.log', 'alert'], function(err, parsedCode) {
 	// ...
 });
 
+// Sync file read
 var parsedCode = logless.parse.fileSync('/path/to/file.js', ['console.log', 'alert']);
 ```
 
