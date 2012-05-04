@@ -33,7 +33,7 @@ var parsedCode = logless.parse.file('/path/to/file.js', ['console.log', 'alert']
 ## CLI Usage
 
 ```bash
-$ logless [--input <in-file>] [--output <out-file>] [--terms <terms>...]
+$ logless [--input <in-file>] [--output <out-file>] [--names <names>...]
 ```
 
 ## MIT License

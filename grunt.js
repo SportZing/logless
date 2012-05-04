@@ -5,8 +5,19 @@
  * Task: logless
  * Description: Parses JavaScript files and removes logging statements
  *
+ * Usage:
+ *  
+ *  logless: {
+ *    task: {
+ *      src: ["file1.js", "file2.js", "other/stuff/*.js"],
+ *      dest: "path/to/destination",
+ *      names: ["console", "alert"]
+ *    }
+ *  }
+ *
  */
 
+var path = require('path');
 var logless = require('logless');
 
 module.exports = function(grunt) {
@@ -17,8 +28,8 @@ module.exports = function(grunt) {
 			
 			files.src.forEach(function(src) {
 				try {
-					var parsed = logless.parse(grunt.file.read(src), data.terms);
-					var target = data.dest + '/' + src;
+					var parsed = logless.parse(grunt.file.read(src), data.names);
+					var target = path.join(data.dest, src);
 					grunt.file.write(target, parsed);
 					grunt.log.writeln('File "' + src + '" parsed -> "' + target + '"');
 				} catch (err) {
