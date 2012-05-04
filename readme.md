@@ -41,8 +41,10 @@ var parsedCode = logless.parse.fileSync('/path/to/file.js', ['console.log', 'ale
 ## CLI Usage
 
 ```bash
-$ logless [--input <in-file>] [--output <out-file>] [--names <names>...]
+$ logless [--input <in-file>] [--output <out-file>] --names <names>...
 ```
+
+If `--input` is omitted, JavaScript code is read from stdin. If `--output` is omitted, the result is sent to stdout.
 
 ## MIT License
 
