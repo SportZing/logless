@@ -29,7 +29,11 @@ var parsedCode = logless.parse(jsCodeString, ['console.log', 'alert']);
 ### Parsing A File's Contents
 
 ```javascript
-var parsedCode = logless.parse.file('/path/to/file.js', ['console.log', 'alert']);
+logless.parse.file('/path/to/file.js', ['console.log', 'alert'], function(err, parsedCode) {
+	// ...
+});
+
+var parsedCode = logless.parse.fileSync('/path/to/file.js', ['console.log', 'alert']);
 ```
 
 ## CLI Usage
