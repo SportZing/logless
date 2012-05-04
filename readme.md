@@ -7,7 +7,7 @@ _Still In Beta_
 ## Install
 
 ```bash
-$ npm install logless
+$ npm install logless [-g]
 ```
 
 ## Progmatic Usage
