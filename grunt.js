@@ -26,14 +26,14 @@ module.exports = function(grunt) {
 			var data = this.data;
 			var files = grunt.file.expandFiles(data.src);
 			
-			files.src.forEach(function(src) {
+			files.forEach(function(src) {
 				try {
 					var parsed = logless.parse(grunt.file.read(src), data.names);
 					var target = path.join(data.dest, src);
 					grunt.file.write(target, parsed);
 					grunt.log.writeln('File "' + src + '" parsed -> "' + target + '"');
 				} catch (err) {
-					grunt.log.error(err);
+					grunt.log.error(src + '\n' + err.stack);
 				}
 			});
 			

@@ -45,7 +45,7 @@ function doParse(code, names) {
 			case 'var':
 				for (var i = 0; i < node.node[1].length; i++) {
 					var sub = node.node[1][i];
-					if (sub[1][0].name !== 'function') {
+					if (sub[1] && sub[1][0].name !== 'function') {
 						if (names.test(sub[1][1])) {
 							names.addToCurrentBlacklist(sub[0]);
 							node.node[1].splice(i--, 1);
