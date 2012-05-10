@@ -1,4 +1,3 @@
-
 var fs   = require('fs');
 var jsp  = require('uglify-js').parser;
 var pro  = require('uglify-js').uglify;
@@ -235,7 +234,7 @@ function getAst(code) {
 }
 
 function genCode(ast) {
-	return pro.gen_code(ast, {beautify: true});
+	return pro.gen_code(ast, {beautify: false});
 }
 
 function buildName(node, segments) {
