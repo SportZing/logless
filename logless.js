@@ -1,3 +1,4 @@
+
 var fs   = require('fs');
 var jsp  = require('uglify-js').parser;
 var pro  = require('uglify-js').uglify;
@@ -5,25 +6,29 @@ var pro  = require('uglify-js').uglify;
 // ------------------------------------------------------------------
 //  Public parsers
  
-exports.parse = function(code, names) {
-	return genCode(doParse(code, names));
+exports.parse = function(code, names, opts) {
+	return genCode(doParse(code, names), (opts || { }));
 };
 
-exports.parse.file = function(file, names, callback) {
+exports.parse.file = function(file, names, opts, callback) {
+	if (typeof opts === 'function' && callback == null) {
+		callback = opts;
+		opts = null;
+	}
 	fs.readFile(file, function(err, data) {
 		if (err) {
 			return callback(err);
 		}
 		try {
-			var result = removeNames(String(data), names);
+			var result = exports.parse(String(data), names, opts);
 			callback(null, result);
 		} catch (e) {callback(e);}
 	});
 };
 
-exports.parse.fileSync = function(file, names) {
+exports.parse.fileSync = function(file, names, opts) {
 	return exports.parse(
-		String(fs.readFileSync(file)), names
+		String(fs.readFileSync(file)), names, opts
 	);
 };
 
@@ -233,8 +238,10 @@ function getAst(code) {
 	return jsp.parse(code, false, true);
 }
 
-function genCode(ast) {
-	return pro.gen_code(ast, {beautify: false});
+function genCode(ast, opts) {
+	return pro.gen_code(ast,
+		merge({ }, {beautify: false}, opts)
+	);
 }
 
 function buildName(node, segments) {
@@ -266,6 +273,16 @@ function Log(foo, depth) {
 	console.log(
 		'\n' + require('util').inspect(foo, false, depth || 3) + '\n'
 	);
+}
+
+function merge(host, donor) {
+	for (var i = 1; i < arguments.length; i++) {
+		donor = arguments[i];
+		Object.keys(donor).forEach(function(key) {
+			host[key] = donor[key];
+		});
+	}
+	return host;
 }
 
 /* End of file logless.js */
