@@ -11,7 +11,8 @@
  *    task: {
  *      src: ["file1.js", "file2.js", "other/stuff/*.js"],
  *      dest: "path/to/destination",
- *      names: ["console", "alert"]
+ *      names: ["console", "alert"],
+ *      options: {beautify: true}
  *    }
  *  }
  *
@@ -28,7 +29,7 @@ module.exports = function(grunt) {
 			
 			files.forEach(function(src) {
 				try {
-					var parsed = logless.parse(grunt.file.read(src), data.names);
+					var parsed = logless.parse(grunt.file.read(src), data.names, data.options);
 					var target = path.join(data.dest, src);
 					grunt.file.write(target, parsed);
 					grunt.log.writeln('File "' + src + '" parsed -> "' + target + '"');
