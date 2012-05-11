@@ -2,7 +2,7 @@
   "author": "James Brumond <kbjr14@gmail.com> (http://jbrumond.me)",
   "name": "logless",
   "description": "Parses an UglifyJS AST and removes logging code",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "preferGlobal": true,
   "repository": {
     "type": "git",
