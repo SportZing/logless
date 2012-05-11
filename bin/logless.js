@@ -9,7 +9,8 @@ var logless = require('../logless');
 var opts = {
 	input: null,
 	output: null,
-	terms: null
+	terms: null,
+	beautify: true
 };
 
 var args = process.argv.slice(2);
@@ -38,6 +39,9 @@ while (args.length) {
 				'    --output',
 				'      Select an output file (defaults to stdout)',
 				'',
+				'    --beautify <yes|no>',
+				'      Should resulting code be beautified?
+				'',
 				'    --terms',
 				'      Followed by a list of blacklist terms (eg. --terms "console.log" "alert").',
 				'      Because this takes all remaining args, this option should be last.',
@@ -52,6 +56,10 @@ while (args.length) {
 		
 		case '--output':
 			opts.output = args.shift();
+		break;
+		
+		case '--beautify':
+			opts.beautify = (args.shift().toLowerCase() === 'yes');
 		break;
 		
 		case '--terms':

@@ -240,7 +240,7 @@ function getAst(code) {
 
 function genCode(ast, opts) {
 	return pro.gen_code(ast,
-		merge({ }, {beautify: false}, opts)
+		merge({ }, {beautify: true}, opts)
 	);
 }
 
