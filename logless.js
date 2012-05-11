@@ -205,6 +205,7 @@ function Blacklist(names) {
 Blacklist.prototype.test = function(node) {
 	var names = flattenArrays([ this.names, this.blacklists ]);
 	var testName = buildName(node);
+	if (! testName) {return false;}
 	if (names.indexOf(testName) >= 0) {return true;}
 	for (var i = 0, c = names.length; i < c; i++) {
 		if (testName.indexOf(names[i]) === 0 &&
