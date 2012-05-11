@@ -40,7 +40,7 @@ while (args.length) {
 				'      Select an output file (defaults to stdout)',
 				'',
 				'    --beautify <yes|no>',
-				'      Should resulting code be beautified?
+				'      Should resulting code be beautified?',
 				'',
 				'    --terms',
 				'      Followed by a list of blacklist terms (eg. --terms "console.log" "alert").',
@@ -48,6 +48,28 @@ while (args.length) {
 				''
 			].join('\n'));
 			process.exit(0);
+		break;
+		
+		case '--grunt':
+			var fs = require('fs');
+			var path = require('path');
+			var output = path.resolve(process.cwd(), args.shift());
+			fs.stat(output, function(err, stats) {
+				if (err) {throw err;}
+				if (stats.isDirectory()) {
+					output = path.join(output, 'logless.js');
+				}
+				fs.readFile(path.join(__dirname, '../grunt.js'), function(err, data) {
+					if (err) {throw err;}
+					console.log('> Creating logless grunt task file...');
+					fs.writeFile(output, data, function(err) {
+						if (err) {throw err;}
+						console.log('> Grunt task file created at ' + output);
+						process.exit(0);
+					});
+				});
+			});
+			return;
 		break;
 		
 		case '--input':
