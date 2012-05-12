@@ -26,7 +26,7 @@ module.exports = function(grunt) {
 	grunt.registerMultiTask('logless',
 		'Parses JavaScript files and removes logging statements', function() {
 			var data = this.data;
-	    var files = grunt.file.expandFiles( this.file.src );
+	    var files = grunt.file.expandFiles( data.src );
 	    var strip = this.data.strip;
 
 	    if ( typeof strip === "string" ) {
