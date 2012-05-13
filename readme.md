@@ -10,7 +10,7 @@ _Still In Beta_
 $ npm install logless [-g]
 ```
 
-The `-g` flag should be used for CLI usage. If you try to install locally, it will complain that it wants to be global, but it will be fine for progmatic use.
+The `-g` flag should be used for CLI usage.
 
 ## Progmatic Usage
 
